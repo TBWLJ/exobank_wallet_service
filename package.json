@@ -1,0 +1,35 @@
+{
+  "name": "wallet-service",
+  "version": "1.0.0",
+  "description": "Wallet microservice for fintech platform",
+  "main": "server.js",
+  "scripts": {
+    "dev": "nodemon server.js",
+    "start": "node server.js",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate": "prisma migrate dev",
+    "prisma:push": "prisma db push"
+  },
+  "keywords": [
+    "wallet",
+    "fintech",
+    "microservice"
+  ],
+  "license": "ISC",
+  "packageManager": "pnpm@10.28.0",
+  "dependencies": {
+    "@prisma/client": "^6.4.1",
+    "axios": "^1.8.2",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "helmet": "^8.0.0",
+    "jsonwebtoken": "^9.0.2",
+    "morgan": "^1.10.0",
+    "redis": "^4.7.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.9",
+    "prisma": "^6.4.1"
+  }
+}

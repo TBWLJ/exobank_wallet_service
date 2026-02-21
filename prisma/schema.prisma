@@ -1,0 +1,118 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum WalletStatus {
+  ACTIVE
+  FROZEN
+}
+
+enum TransactionType {
+  INTERNAL
+  EXTERNAL
+  REVERSAL
+}
+
+enum TransactionStatus {
+  INITIATED
+  PENDING
+  SUCCESS
+  FAILED
+  REVERSED
+}
+
+enum LedgerEntryType {
+  DEBIT
+  CREDIT
+}
+
+enum AuditAction {
+  WALLET_CREATED
+  TRANSFER_INITIATED
+  TRANSFER_SUCCESS
+  TRANSFER_FAILED
+  REVERSAL_CREATED
+  EXTERNAL_WEBHOOK_RECEIVED
+}
+
+model Wallet {
+  id                 String         @id @default(uuid()) @db.Uuid
+  userId             String?        @unique @db.Uuid
+  accountNumber      String         @unique @db.VarChar(10)
+  status             WalletStatus   @default(ACTIVE)
+  isSystem           Boolean        @default(false)
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
+  sentTransactions   Transaction[]  @relation("SenderTransactions")
+  receivedTransactions Transaction[] @relation("ReceiverTransactions")
+  ledgerEntries      LedgerEntry[]
+
+  @@index([accountNumber])
+  @@map("wallets")
+}
+
+model Transaction {
+  id                    String            @id @default(uuid()) @db.Uuid
+  reference             String            @unique @db.VarChar(64)
+  type                  TransactionType
+  amount                Decimal           @db.Decimal(18, 2)
+  currency              String            @default("NGN") @db.VarChar(3)
+  status                TransactionStatus
+  senderWalletId        String            @db.Uuid
+  receiverWalletId      String?           @db.Uuid
+  externalBankCode      String?           @db.VarChar(16)
+  externalAccountNumber String?           @db.VarChar(32)
+  idempotencyKey        String            @db.VarChar(128)
+  originalTransactionId String?           @db.Uuid
+  createdAt             DateTime          @default(now())
+  updatedAt             DateTime          @updatedAt
+  ledgerEntries         LedgerEntry[]
+
+  senderWallet       Wallet       @relation("SenderTransactions", fields: [senderWalletId], references: [id], onDelete: Restrict)
+  receiverWallet     Wallet?      @relation("ReceiverTransactions", fields: [receiverWalletId], references: [id], onDelete: Restrict)
+  originalTransaction Transaction? @relation("TransactionReversal", fields: [originalTransactionId], references: [id], onDelete: SetNull)
+  reversals           Transaction[] @relation("TransactionReversal")
+
+  @@index([senderWalletId])
+  @@index([receiverWalletId])
+  @@index([status])
+  @@index([idempotencyKey])
+  @@map("transactions")
+}
+
+model LedgerEntry {
+  id            String          @id @default(uuid()) @db.Uuid
+  transactionId String          @db.Uuid
+  walletId      String          @db.Uuid
+  entryType     LedgerEntryType
+  amount        Decimal         @db.Decimal(18, 2)
+  createdAt     DateTime        @default(now())
+
+  transaction Transaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+  wallet      Wallet      @relation(fields: [walletId], references: [id], onDelete: Restrict)
+
+  @@index([walletId])
+  @@index([transactionId])
+  @@map("ledger_entries")
+}
+
+model AuditLog {
+  id        String      @id @default(uuid()) @db.Uuid
+  action    AuditAction
+  userId    String?     @db.Uuid
+  walletId  String?     @db.Uuid
+  success   Boolean
+  ipAddress String?     @db.VarChar(64)
+  metadata  Json?
+  createdAt DateTime    @default(now())
+
+  @@index([action])
+  @@index([userId])
+  @@index([walletId])
+  @@map("audit_logs")
+}
